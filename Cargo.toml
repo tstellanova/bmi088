@@ -1,0 +1,30 @@
+[package]
+name = "bmi088"
+version = "0.1.0"
+authors = ["Todd Stellanova <tstellanova@users.noreply.github.com>"]
+edition = "2018"
+description = "BMI088 6DOF IMU driver for embedded hal"
+license = "BSD-3-Clause"
+repository = "https://github.com/tstellanova/bmi088"
+categories = [
+    "embedded",
+    "hardware-support",
+    "no-std",
+]
+keywords = [
+    "embedded-hal-driver",
+    "BMI088",
+    "IMU",
+    "6DOF",
+    "accelerometer",
+    "gyroscope",
+    "Bosch",
+    "Sensortec"
+]
+readme = "README.md"
+
+[dependencies]
+embedded-hal = { version = "0.2.3", features = ["unproven"] }
+
+[dev-dependencies]
+embedded-hal-mock = "0.7.1"
