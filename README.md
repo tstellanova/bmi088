@@ -15,6 +15,7 @@ and a triaxial 16-bit accelerometer.
 - [ ] Support for probe (check product identifier)
 - [ ] Read of gyro data
 - [ ] Read of accel data
+- [ ] Support for DRDY pins
 - [ ] Support for DMA with SPI
 - [ ] Basic I2C support
 - [ ] Tests with mock embedded hal
