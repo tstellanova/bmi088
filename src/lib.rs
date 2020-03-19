@@ -6,6 +6,7 @@ LICENSE: BSD3 (see LICENSE file)
 #![no_std]
 
 use embedded_hal as hal;
+use hal::blocking::delay::DelayMs;
 use hal::digital::v2::OutputPin;
 
 mod interface;
@@ -18,6 +19,9 @@ pub enum Error<CommE, PinE> {
     Comm(CommE),
     /// Pin setting error
     Pin(PinE),
+
+    /// Sensor is not responding
+    Unresponsive,
 }
 
 pub struct Builder {}
@@ -96,18 +100,53 @@ where
     const REG_CHIP_ID: u8 = 0x00;
     const KNOWN_CHIP_ID: u8 = 0x1E;
 
+    const REG_SOFT_RESET: u8 = 0x7E;
+    const CMD_SOFT_RESET: u8 = 0xB6;
+
     pub(crate) fn new_with_interface(sensor_interface: SI) -> Self {
         Self { sensor_interface }
     }
 
     /// Read the sensor identifiers and
     /// return true if they match the expected value
-    pub fn probe(&mut self) -> Result<bool, SI::InterfaceError> {
-        //this sensor requires a couple tries to get a valid probe after reset
-        self.sensor_interface.register_read(Self::REG_CHIP_ID)?;
-        let chip_id = self.sensor_interface.register_read(Self::REG_CHIP_ID)?;
+    pub fn probe(
+        &mut self,
+        delay_source: &mut impl DelayMs<u8>,
+    ) -> Result<bool, SI::InterfaceError> {
+        let mut chip_id = 0;
+        for _ in 0..5 {
+            chip_id = self.sensor_interface.register_read(Self::REG_CHIP_ID)?;
+            if chip_id == Self::KNOWN_CHIP_ID {
+                break;
+            }
+            delay_source.delay_ms(10);
+        }
 
         Ok(chip_id == Self::KNOWN_CHIP_ID)
+    }
+
+    /// Perform a soft reset on the chip
+    pub fn soft_reset(
+        &mut self,
+        delay_source: &mut impl DelayMs<u8>,
+    ) -> Result<(), SI::InterfaceError> {
+        self.sensor_interface
+            .register_write(Self::REG_SOFT_RESET, Self::CMD_SOFT_RESET)?;
+        delay_source.delay_ms(100);
+        Ok(())
+    }
+
+    /// Give the sensor interface a chance to set up
+    pub fn setup(&mut self, delay_source: &mut impl DelayMs<u8>) -> Result<(), SI::InterfaceError> {
+        self.soft_reset(delay_source)?;
+
+        let probe_success = self.probe(delay_source)?;
+        if probe_success {
+            Ok(())
+        } else {
+            panic!("no luck");
+            // Err(Error::Unresponsive)
+        }
     }
 }
 
@@ -123,18 +162,53 @@ where
     const REG_CHIP_ID: u8 = 0x00;
     const KNOWN_CHIP_ID: u8 = 0x0F;
 
+    const REG_SOFT_RESET: u8 = 0x14;
+    const CMD_SOFT_RESET: u8 = 0xB6;
+
     pub(crate) fn new_with_interface(sensor_interface: SI) -> Self {
         Self { sensor_interface }
     }
 
     /// Read the sensor identifiers and
     /// return true if they match the expected value
-    pub fn probe(&mut self) -> Result<bool, SI::InterfaceError> {
-        //this sensor requires a couple tries to get a valid probe after reset
-        self.sensor_interface.register_read(Self::REG_CHIP_ID)?;
-        let sensor_id = self.sensor_interface.register_read(Self::REG_CHIP_ID)?;
+    pub fn probe(
+        &mut self,
+        delay_source: &mut impl DelayMs<u8>,
+    ) -> Result<bool, SI::InterfaceError> {
+        let mut chip_id = 0;
+        for _ in 0..5 {
+            chip_id = self.sensor_interface.register_read(Self::REG_CHIP_ID)?;
+            if chip_id == Self::KNOWN_CHIP_ID {
+                break;
+            }
+            delay_source.delay_ms(10);
+        }
 
-        Ok(sensor_id == Self::KNOWN_CHIP_ID)
+        Ok(chip_id == Self::KNOWN_CHIP_ID)
+    }
+
+    /// Perform a soft reset on the chip
+    pub fn soft_reset(
+        &mut self,
+        delay_source: &mut impl DelayMs<u8>,
+    ) -> Result<(), SI::InterfaceError> {
+        self.sensor_interface
+            .register_write(Self::REG_SOFT_RESET, Self::CMD_SOFT_RESET)?;
+        delay_source.delay_ms(100);
+        Ok(())
+    }
+
+    /// Give the sensor interface a chance to set up
+    pub fn setup(&mut self, delay_source: &mut impl DelayMs<u8>) -> Result<(), SI::InterfaceError> {
+        self.soft_reset(delay_source)?;
+
+        let probe_success = self.probe(delay_source)?;
+        if probe_success {
+            Ok(())
+        } else {
+            panic!("no luck");
+            // Err(Error::Unresponsive)
+        }
     }
 }
 

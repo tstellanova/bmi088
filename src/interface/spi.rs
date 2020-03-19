@@ -1,5 +1,4 @@
 use embedded_hal as hal;
-use hal::blocking::delay::DelayMs;
 use hal::digital::v2::OutputPin;
 
 use super::SensorInterface;
@@ -22,8 +21,13 @@ where
         + hal::blocking::spi::Transfer<u8, Error = CommE>,
     CSN: OutputPin<Error = PinE>,
 {
+    /// Combined with register address for reading single byte register
+    const DIR_READ: u8 = 0x80;
+
     pub fn new(spi: SPI, csn: CSN) -> Self {
-        Self { spi: spi, csn: csn }
+        let mut inst = Self { spi: spi, csn: csn };
+        let _ = inst.csn.set_high();
+        inst
     }
 
     fn transfer_block(&mut self, block: &mut [u8]) -> Result<(), Error<CommE, PinE>> {
@@ -45,13 +49,6 @@ where
 {
     type InterfaceError = Error<CommE, PinE>;
 
-    fn setup(&mut self, _delay_source: &mut impl DelayMs<u8>) -> Result<(), Self::InterfaceError> {
-        // Deselect sensor
-        self.csn.set_high().map_err(Error::Pin)?;
-
-        Ok(())
-    }
-
     fn register_read(&mut self, reg: u8) -> Result<u8, Self::InterfaceError> {
         /// Combined with register address for reading single byte register
         const DIR_READ: u8 = 0x80;
@@ -66,5 +63,17 @@ where
         self.transfer_block(&mut cmd)?;
 
         Ok(())
+    }
+
+    fn read_vec3_i16(&mut self, reg: u8) -> Result<[i16; 3], Self::InterfaceError> {
+        let mut block: [u8; 7] = [0; 7];
+        block[0] = reg | Self::DIR_READ;
+        self.transfer_block(&mut block)?;
+
+        Ok([
+            (block[0] as i16) << 8 | (block[1] as i16),
+            (block[2] as i16) << 8 | (block[3] as i16),
+            (block[4] as i16) << 8 | (block[5] as i16),
+        ])
     }
 }

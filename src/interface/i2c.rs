@@ -1,5 +1,4 @@
 use embedded_hal as hal;
-use hal::blocking::delay::DelayMs;
 
 use super::SensorInterface;
 use crate::Error;
@@ -33,17 +32,15 @@ where
 {
     type InterfaceError = Error<CommE, ()>;
 
-    fn setup(&mut self, _delay_source: &mut impl DelayMs<u8>) -> Result<(), Self::InterfaceError> {
-        //TODO
-        Ok(())
+    fn register_read(&mut self, _reg: u8) -> Result<u8, Self::InterfaceError> {
+        unimplemented!()
     }
 
-    fn register_read(&mut self, _reg: u8) -> Result<u8, Self::InterfaceError> {
-        //TODO
-        Ok(0)
-    }
     fn register_write(&mut self, _reg: u8, _val: u8) -> Result<(), Self::InterfaceError> {
-        //TODO
-        Ok(())
+        unimplemented!()
+    }
+
+    fn read_vec3_i16(&mut self, _reg: u8) -> Result<[i16; 3], Self::InterfaceError> {
+        unimplemented!()
     }
 }
