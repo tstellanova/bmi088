@@ -11,10 +11,11 @@ and a triaxial 16-bit accelerometer.
 
 ## Status
 
-- [ ] Basic SPI support
-- [ ] Support for probe (check product identifier)
-- [ ] Read of gyro data
-- [ ] Read of accel data
+- [x] Basic SPI support
+- [x] Support for probe (check product identifier)
+- [x] split into separate gyro and accel interfaces (separate CSN lines)
+- [ ] blocking read of gyro data
+- [ ] blocking read of accel data
 - [ ] Support for DRDY pins
 - [ ] Support for DMA with SPI
 - [ ] Basic I2C support
