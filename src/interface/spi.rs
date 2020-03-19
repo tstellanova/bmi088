@@ -70,10 +70,13 @@ where
         block[0] = reg | Self::DIR_READ;
         self.transfer_block(&mut block)?;
 
+        //This is a little-endian device, eg:
+        // 0x02 RATE_X_LSB
+        // 0x03 RATE_X_MSB
         Ok([
-            (block[0] as i16) << 8 | (block[1] as i16),
-            (block[2] as i16) << 8 | (block[3] as i16),
-            (block[4] as i16) << 8 | (block[5] as i16),
+            (block[1] as i16) << 8 | (block[0] as i16),
+            (block[3] as i16) << 8 | (block[2] as i16),
+            (block[5] as i16) << 8 | (block[4] as i16),
         ])
     }
 }
