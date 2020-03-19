@@ -55,7 +55,9 @@ impl Builder {
         CommE: core::fmt::Debug,
         PinE: core::fmt::Debug,
     {
-        let iface = interface::SpiInterface::new(spi, csn);
+        //accel part requires "sloppy reads"
+        //see section 6.1.2 in the BMI088 datasheet
+        let iface = interface::SpiInterface::new(spi, csn, true);
         Accelerometer::new_with_interface(iface)
     }
 
@@ -83,7 +85,7 @@ impl Builder {
         CommE: core::fmt::Debug,
         PinE: core::fmt::Debug,
     {
-        let iface = interface::SpiInterface::new(spi, csn);
+        let iface = interface::SpiInterface::new(spi, csn, false);
         Gyroscope::new_with_interface(iface)
     }
 }
@@ -102,8 +104,11 @@ where
     const REG_SOFT_RESET: u8 = 0x7E;
     const CMD_SOFT_RESET: u8 = 0xB6;
 
+    const REG_ACC_PWR_CTRL: u8 = 0x7D;
+    const ACC_PWR_CTRL_EN: u8 = 0x04;
+
     const REG_ACC_X_LSB: u8 = 0x12;
-    const REG_ACCEL_START: u8 = Self::REG_ACC_X_LSB;
+    const REG_ACCEL_DATA_START: u8 = Self::REG_ACC_X_LSB;
 
     pub(crate) fn new_with_interface(sensor_interface: SI) -> Self {
         Self { sensor_interface }
@@ -134,24 +139,31 @@ where
     ) -> Result<(), SI::InterfaceError> {
         self.sensor_interface
             .register_write(Self::REG_SOFT_RESET, Self::CMD_SOFT_RESET)?;
-        delay_source.delay_ms(100);
+        delay_source.delay_ms(5);
         Ok(())
     }
 
     /// Give the sensor interface a chance to set up
     pub fn setup(&mut self, delay_source: &mut impl DelayMs<u8>) -> Result<(), SI::InterfaceError> {
+        // see datasheet section:
+        // "3. Quick Start Guide – Device Initialization"
         self.soft_reset(delay_source)?;
 
         let probe_success = self.probe(delay_source)?;
-        if probe_success {
-            Ok(())
-        } else {
-            Err(Error::Unresponsive)
+        if !probe_success {
+            return Err(Error::Unresponsive)
         }
+
+        // enable the accelerometer
+        self.sensor_interface
+            .register_write(Self::REG_ACC_PWR_CTRL, Self::ACC_PWR_CTRL_EN)?;
+        delay_source.delay_ms(50);
+
+        Ok(())
     }
 
     pub fn get_accel(&mut self) -> Result<[i16; 3], SI::InterfaceError> {
-        let sample = self.sensor_interface.read_vec3_i16(Self::REG_ACCEL_START)?;
+        let sample = self.sensor_interface.read_vec3_i16(Self::REG_ACCEL_DATA_START)?;
         Ok(sample)
     }
 }
