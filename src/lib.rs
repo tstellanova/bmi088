@@ -92,10 +92,9 @@ pub struct Accelerometer<SI> {
     pub(crate) sensor_interface: SI,
 }
 
-impl<SI> Accelerometer<SI>
+impl<SI, CommE, PinE> Accelerometer<SI>
 where
-    SI: SensorInterface,
-    SI::InterfaceError: core::fmt::Debug,
+    SI: SensorInterface<InterfaceError = Error<CommE, PinE>>,
 {
     const REG_CHIP_ID: u8 = 0x00;
     const KNOWN_CHIP_ID: u8 = 0x1E;
@@ -144,8 +143,7 @@ where
         if probe_success {
             Ok(())
         } else {
-            panic!("no luck");
-            // Err(Error::Unresponsive)
+            Err(Error::Unresponsive)
         }
     }
 }
@@ -154,10 +152,9 @@ pub struct Gyroscope<SI> {
     pub(crate) sensor_interface: SI,
 }
 
-impl<SI> Gyroscope<SI>
+impl<SI, CommE, PinE> Gyroscope<SI>
 where
-    SI: SensorInterface,
-    SI::InterfaceError: core::fmt::Debug,
+    SI: SensorInterface<InterfaceError = Error<CommE, PinE>>,
 {
     const REG_CHIP_ID: u8 = 0x00;
     const KNOWN_CHIP_ID: u8 = 0x0F;
@@ -206,8 +203,7 @@ where
         if probe_success {
             Ok(())
         } else {
-            panic!("no luck");
-            // Err(Error::Unresponsive)
+            Err(Error::Unresponsive)
         }
     }
 }
