@@ -265,16 +265,16 @@ where
     }
 
     pub fn set_bandwidth(&mut self, output_data_rate_hz: u32) -> Result<(), SI::InterfaceError> {
-        const GYRO_ODR_BW_0: u8 = 0x00;//ODR 2000 Hz, filter 532 Hz
-        const GYRO_ODR_BW_1: u8 = 0x01;//ODR 2000 Hz, filter 230 Hz
-        const GYRO_ODR_BW_2: u8 = 0x02;//ODR 1000 Hz, filter 116 Hz
+        //const GYRO_ODR_BW_0: u8 = 0x00;//ODR 2000 Hz, filter 532 Hz
+        const GYRO_ODR_2000: u8 = 0x01;//ODR 2000 Hz, filter 230 Hz
+        const GYRO_ODR_1000: u8 = 0x02;//ODR 1000 Hz, filter 116 Hz
 
         //REG_GYRO_BANDWIDTH
         let new_val = if output_data_rate_hz < 2000 {
-            GYRO_ODR_BW_2
+            GYRO_ODR_2000
         }
         else {
-            GYRO_ODR_BW_1
+            GYRO_ODR_1000
         };
         self.si.register_write(Self::REG_GYRO_BANDWIDTH, new_val)
     }
