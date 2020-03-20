@@ -112,5 +112,6 @@ where
             (resp[3] as i16) << 8 | (resp[2] as i16),
             (resp[5] as i16) << 8 | (resp[4] as i16),
         ])
+
     }
 }

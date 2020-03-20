@@ -91,7 +91,7 @@ impl Builder {
 }
 
 pub struct Accelerometer<SI> {
-    pub(crate) sensor_interface: SI,
+    pub(crate) si: SI,
 }
 
 impl<SI, CommE, PinE> Accelerometer<SI>
@@ -111,7 +111,7 @@ where
     const REG_ACCEL_DATA_START: u8 = Self::REG_ACC_X_LSB;
 
     pub(crate) fn new_with_interface(sensor_interface: SI) -> Self {
-        Self { sensor_interface }
+        Self { si: sensor_interface }
     }
 
     /// Read the sensor identifiers and
@@ -122,7 +122,7 @@ where
     ) -> Result<bool, SI::InterfaceError> {
         let mut chip_id = 0;
         for _ in 0..5 {
-            chip_id = self.sensor_interface.register_read(Self::REG_CHIP_ID)?;
+            chip_id = self.si.register_read(Self::REG_CHIP_ID)?;
             if chip_id == Self::KNOWN_CHIP_ID {
                 break;
             }
@@ -137,8 +137,7 @@ where
         &mut self,
         delay_source: &mut impl DelayMs<u8>,
     ) -> Result<(), SI::InterfaceError> {
-        self.sensor_interface
-            .register_write(Self::REG_SOFT_RESET, Self::CMD_SOFT_RESET)?;
+        self.si.register_write(Self::REG_SOFT_RESET, Self::CMD_SOFT_RESET)?;
         delay_source.delay_ms(5);
         Ok(())
     }
@@ -155,15 +154,14 @@ where
         }
 
         // enable the accelerometer
-        self.sensor_interface
-            .register_write(Self::REG_ACC_PWR_CTRL, Self::ACC_PWR_CTRL_EN)?;
+        self.si.register_write(Self::REG_ACC_PWR_CTRL, Self::ACC_PWR_CTRL_EN)?;
         delay_source.delay_ms(50);
 
         Ok(())
     }
 
     pub fn get_accel(&mut self) -> Result<[i16; 3], SI::InterfaceError> {
-        let sample = self.sensor_interface.read_vec3_i16(Self::REG_ACCEL_DATA_START)?;
+        let sample = self.si.read_vec3_i16(Self::REG_ACCEL_DATA_START)?;
         Ok(sample)
     }
 }
@@ -186,10 +184,14 @@ where
     const REG_GYRO_START: u8 = Self::REG_RATE_X_LSB;
 
     const REG_GYRO_RANGE: u8 = 0x0F;
+    const REG_GYRO_BANDWIDTH: u8 = 0x10;
+
+    const REG_GYRO_LPM1: u8 = 0x11;
+    const POWER_MODE_NORMAL: u8 = 0x00;
 
     /// Bandwidth in Hz
-    const MAX_RATE_HZ: u32 = 1000;
-    const DEFAULT_RATE_HZ: u32 = Self::MAX_RATE_HZ;
+    const MAX_RATE_HZ: u32 = 2000;
+    const DEFAULT_RATE_HZ: u32 = (Self::MAX_RATE_HZ / 2);
     /// Max range in degrees per second
     const MAX_RANGE_DPS: u32 = 2000;
     const DEFAULT_RANGE_DPS: u32 = Self::MAX_RANGE_DPS;
@@ -234,12 +236,19 @@ where
         self.soft_reset(delay_source)?;
 
         let probe_success = self.probe(delay_source)?;
-        if probe_success {
-            let _ = self.set_range(Self::DEFAULT_RANGE_DPS);
-            Ok(())
-        } else {
-            Err(Error::Unresponsive)
+        if !probe_success {
+            return Err(Error::Unresponsive);
         }
+
+        self.set_range(Self::DEFAULT_RANGE_DPS)?;
+        self.set_bandwidth(Self::DEFAULT_RATE_HZ)?;
+
+        //TODO support DRDY and INT pins
+
+        // enable the gyro in normal mode
+        self.si.register_write(Self::REG_GYRO_LPM1, Self::POWER_MODE_NORMAL)?;
+
+        Ok(())
     }
 
     pub fn set_range(&mut self, dps: u32) -> Result<(), SI::InterfaceError> {
@@ -253,6 +262,21 @@ where
         };
 
         self.si.register_write(Self::REG_GYRO_RANGE, new_val)
+    }
+
+    pub fn set_bandwidth(&mut self, output_data_rate_hz: u32) -> Result<(), SI::InterfaceError> {
+        const GYRO_ODR_BW_0: u8 = 0x00;//ODR 2000 Hz, filter 532 Hz
+        const GYRO_ODR_BW_1: u8 = 0x01;//ODR 2000 Hz, filter 230 Hz
+        const GYRO_ODR_BW_2: u8 = 0x02;//ODR 1000 Hz, filter 116 Hz
+
+        //REG_GYRO_BANDWIDTH
+        let new_val = if output_data_rate_hz < 2000 {
+            GYRO_ODR_BW_2
+        }
+        else {
+            GYRO_ODR_BW_1
+        };
+        self.si.register_write(Self::REG_GYRO_BANDWIDTH, new_val)
     }
 
     pub fn get_gyro(&mut self) -> Result<[i16; 3], SI::InterfaceError> {
