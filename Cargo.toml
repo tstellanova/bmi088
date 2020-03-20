@@ -15,11 +15,8 @@ keywords = [
     "embedded-hal-driver",
     "BMI088",
     "IMU",
-    "6DOF",
     "accelerometer",
     "gyroscope",
-    "Bosch",
-    "Sensortec"
 ]
 readme = "README.md"
 
