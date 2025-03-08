@@ -1,6 +1,6 @@
 [package]
 name = "bmi088"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Todd Stellanova <tstellanova@users.noreply.github.com>"]
 edition = "2018"
 description = "BMI088 6DOF IMU driver for embedded hal"
@@ -21,7 +21,7 @@ keywords = [
 readme = "README.md"
 
 [dependencies]
-embedded-hal = { version = "0.2.3", features = ["unproven"] }
+embedded-hal = { version = "1.0.0" }
 
 [dev-dependencies]
 embedded-hal-mock = "0.7.1"

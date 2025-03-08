@@ -1,57 +1,41 @@
 use embedded_hal as hal;
-use hal::digital::v2::OutputPin;
 
 use super::SensorInterface;
 use crate::Error;
 
 /// This combines the SPI peripheral and
 /// associated control pins such as:
-/// - CSN : Chip Select (aka SS or Slave Select)
 /// - DRDY: Data Ready: Sensor uses this to indicate it had data available for read
-pub struct SpiInterface<SPI, CSN> {
+pub struct SpiInterface<SPI> {
     /// the SPI port to use when communicating
     spi: SPI,
-    /// the Chip Select pin (GPIO output) to use when communicating
-    csn: CSN,
     /// should we use the sloppy padded prefix reads? eg for accel part on SPI?
     /// see section 6.1.2 in the BMI088 datasheet
     use_sloppy_reads: bool,
 }
 
-impl<SPI, CSN, CommE, PinE> SpiInterface<SPI, CSN>
+impl<SPI, CommE> SpiInterface<SPI>
 where
-    SPI: hal::blocking::spi::Write<u8, Error = CommE>
-        + hal::blocking::spi::Transfer<u8, Error = CommE>,
-    CSN: OutputPin<Error = PinE>,
+    SPI: hal::spi::SpiDevice<u8, Error = CommE>,
 {
     /// Combined with register address for reading single byte register
     const DIR_READ: u8 = 0x80;
 
-    pub fn new(spi: SPI, csn: CSN, use_sloppy_reads: bool) -> Self {
-        let mut inst = Self { spi, csn, use_sloppy_reads };
-        let _ = inst.csn.set_low();
-        let _ = inst.csn.set_high();
-        inst
+    pub fn new(spi: SPI, use_sloppy_reads: bool) -> Self {
+        Self { spi, use_sloppy_reads }
     }
 
-    fn transfer_block(&mut self, block: &mut [u8]) -> Result<(), Error<CommE, PinE>> {
-        let _ = self.csn.set_low();
-        let rc = self.spi.transfer(block);
-        let _ = self.csn.set_high();
-        let _ = rc.map_err(Error::Comm)?;
-
-        Ok(())
+    fn transfer_block(&mut self, block: &mut [u8]) -> Result<(), Error<CommE, SPI::Error>> {
+        self.spi.transfer_in_place(block).map_err(Error::Comm)
     }
 }
 
-impl<SPI, CSN, CommE, PinE> SensorInterface for SpiInterface<SPI, CSN>
+impl<SPI, CommE> SensorInterface for SpiInterface<SPI>
 where
-    SPI: hal::blocking::spi::Write<u8, Error = CommE>
-        + hal::blocking::spi::Transfer<u8, Error = CommE>,
-    CSN: OutputPin<Error = PinE>,
+    SPI: hal::spi::SpiDevice<u8, Error = CommE>
     //DRDY: InputPin<Error = PinE>,
 {
-    type InterfaceError = Error<CommE, PinE>;
+    type InterfaceError = Error<CommE, SPI::Error>;
 
     fn register_read(&mut self, reg: u8) -> Result<u8, Self::InterfaceError> {
         /// Combined with register address for reading single byte register

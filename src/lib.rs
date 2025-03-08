@@ -6,8 +6,7 @@ LICENSE: BSD3 (see LICENSE file)
 #![no_std]
 
 use embedded_hal as hal;
-use hal::blocking::delay::DelayMs;
-use hal::digital::v2::OutputPin;
+use hal::delay::DelayNs;
 
 mod interface;
 pub use interface::{I2cInterface, SensorInterface, SpiInterface};
@@ -34,9 +33,7 @@ impl Builder {
         address: u8,
     ) -> Accelerometer<I2cInterface<I2C>>
     where
-        I2C: hal::blocking::i2c::Write<Error = CommE>
-            + hal::blocking::i2c::Read<Error = CommE>
-            + hal::blocking::i2c::WriteRead<Error = CommE>,
+        I2C: hal::i2c::I2c<Error = CommE>,
         CommE: core::fmt::Debug,
     {
         let iface = interface::I2cInterface::new(i2c, address);
@@ -44,29 +41,23 @@ impl Builder {
     }
 
     /// Create a new driver using SPI interface
-    pub fn new_accel_spi<SPI, CSN, CommE, PinE>(
+    pub fn new_accel_spi<SPI, CommE>(
         spi: SPI,
-        csn: CSN,
-    ) -> Accelerometer<SpiInterface<SPI, CSN>>
+    ) -> Accelerometer<SpiInterface<SPI>>
     where
-        SPI: hal::blocking::spi::Transfer<u8, Error = CommE>
-            + hal::blocking::spi::Write<u8, Error = CommE>,
-        CSN: OutputPin<Error = PinE>,
+        SPI: hal::spi::SpiDevice<u8, Error = CommE>,
         CommE: core::fmt::Debug,
-        PinE: core::fmt::Debug,
     {
         //accel part requires "sloppy reads"
         //see section 6.1.2 in the BMI088 datasheet
-        let iface = interface::SpiInterface::new(spi, csn, true);
+        let iface = interface::SpiInterface::new(spi, true);
         Accelerometer::new_with_interface(iface)
     }
 
     /// Create a new driver using I2C interface
     pub fn new_gyro_i2c<I2C, CommE>(&self, i2c: I2C, address: u8) -> Gyroscope<I2cInterface<I2C>>
     where
-        I2C: hal::blocking::i2c::Write<Error = CommE>
-            + hal::blocking::i2c::Read<Error = CommE>
-            + hal::blocking::i2c::WriteRead<Error = CommE>,
+        I2C: hal::i2c::I2c<Error = CommE>,
         CommE: core::fmt::Debug,
     {
         let iface = interface::I2cInterface::new(i2c, address);
@@ -74,18 +65,14 @@ impl Builder {
     }
 
     /// Create a new driver using SPI interface
-    pub fn new_gyro_spi<SPI, CSN, CommE, PinE>(
+    pub fn new_gyro_spi<SPI, CommE>(
         spi: SPI,
-        csn: CSN,
-    ) -> Gyroscope<SpiInterface<SPI, CSN>>
+    ) -> Gyroscope<SpiInterface<SPI>>
     where
-        SPI: hal::blocking::spi::Transfer<u8, Error = CommE>
-            + hal::blocking::spi::Write<u8, Error = CommE>,
-        CSN: OutputPin<Error = PinE>,
+        SPI: hal::spi::SpiDevice<u8, Error = CommE>,
         CommE: core::fmt::Debug,
-        PinE: core::fmt::Debug,
     {
-        let iface = interface::SpiInterface::new(spi, csn, false);
+        let iface = interface::SpiInterface::new(spi, false);
         Gyroscope::new_with_interface(iface)
     }
 }
@@ -118,7 +105,7 @@ where
     /// return true if they match the expected value
     pub fn probe(
         &mut self,
-        delay_source: &mut impl DelayMs<u8>,
+        delay_source: &mut impl DelayNs,
     ) -> Result<bool, SI::InterfaceError> {
         let mut chip_id = 0;
         for _ in 0..5 {
@@ -135,7 +122,7 @@ where
     /// Perform a soft reset on the chip
     pub fn soft_reset(
         &mut self,
-        delay_source: &mut impl DelayMs<u8>,
+        delay_source: &mut impl DelayNs,
     ) -> Result<(), SI::InterfaceError> {
         self.si.register_write(Self::REG_SOFT_RESET, Self::CMD_SOFT_RESET)?;
         delay_source.delay_ms(5);
@@ -143,7 +130,7 @@ where
     }
 
     /// Give the sensor interface a chance to set up
-    pub fn setup(&mut self, delay_source: &mut impl DelayMs<u8>) -> Result<(), SI::InterfaceError> {
+    pub fn setup(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SI::InterfaceError> {
         // see datasheet section:
         // "3. Quick Start Guide – Device Initialization"
         self.soft_reset(delay_source)?;
@@ -206,7 +193,7 @@ where
     /// return true if they match the expected value
     pub fn probe(
         &mut self,
-        delay_source: &mut impl DelayMs<u8>,
+        delay_source: &mut impl DelayNs,
     ) -> Result<bool, SI::InterfaceError> {
         let mut chip_id = 0;
         for _ in 0..5 {
@@ -223,7 +210,7 @@ where
     /// Perform a soft reset on the chip
     pub fn soft_reset(
         &mut self,
-        delay_source: &mut impl DelayMs<u8>,
+        delay_source: &mut impl DelayNs,
     ) -> Result<(), SI::InterfaceError> {
         self.si
             .register_write(Self::REG_SOFT_RESET, Self::CMD_SOFT_RESET)?;
@@ -232,7 +219,7 @@ where
     }
 
     /// Give the sensor interface a chance to set up
-    pub fn setup(&mut self, delay_source: &mut impl DelayMs<u8>) -> Result<(), SI::InterfaceError> {
+    pub fn setup(&mut self, delay_source: &mut impl DelayNs) -> Result<(), SI::InterfaceError> {
         self.soft_reset(delay_source)?;
 
         let probe_success = self.probe(delay_source)?;
