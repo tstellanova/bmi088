@@ -2,7 +2,7 @@
 name = "bmi088"
 version = "0.2.0"
 authors = ["Todd Stellanova <tstellanova@users.noreply.github.com>"]
-edition = "2018"
+edition = "2024"
 description = "BMI088 6DOF IMU driver for embedded hal"
 license = "BSD-3-Clause"
 repository = "https://github.com/tstellanova/bmi088"
