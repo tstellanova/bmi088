@@ -11,6 +11,8 @@ and a triaxial 16-bit accelerometer.
 
 ## Status
 
+**I am not actively maintaining this crate. If you would like to take on ownership of the crate, please open a PR and provide a note to that effect.**
+
 - [x] Basic SPI support
 - [x] Support for probe (check product identifier)
 - [x] Split into separate gyro and accel interfaces (separate eg CSN lines)
